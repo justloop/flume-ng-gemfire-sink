@@ -1,6 +1,7 @@
 package com.smarthub.flume.sink;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import org.apache.flume.Channel;
@@ -84,7 +85,12 @@ public class GemfireSink extends AbstractSink implements Configurable {
 	public synchronized void start() {
 		// load from gemfire config
 		// Create the cache which causes the cache-xml-file to be parsed
-		cache = new CacheFactory().set("cache-xml-file", "gemfire-config.xml").create();
+		CacheFactory factory = new CacheFactory().set("cache-xml-file", "gemfire-config.xml");
+		for (Entry<Object, Object> e : producerProps.entrySet()) {
+			factory.set(e.getKey().toString(), e.getValue().toString());
+		}
+		cache = factory.create();
+
 		// Get the Region
 		gfRegion = cache.getRegion(region);
 		super.start();
