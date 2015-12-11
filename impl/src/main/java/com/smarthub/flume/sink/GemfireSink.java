@@ -14,9 +14,9 @@ import org.apache.flume.sink.AbstractSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheFactory;
 import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.client.ClientCache;
+import com.gemstone.gemfire.cache.client.ClientCacheFactory;
 
 public class GemfireSink extends AbstractSink implements Configurable {
 
@@ -27,7 +27,7 @@ public class GemfireSink extends AbstractSink implements Configurable {
 	private String region;
 	private Context context;
 
-	private Cache cache;
+	private ClientCache cache;
 	private Region<String, MessageWrapper> gfRegion;
 
 	@Override
@@ -85,7 +85,8 @@ public class GemfireSink extends AbstractSink implements Configurable {
 	public synchronized void start() {
 		// load from gemfire config
 		// Create the cache which causes the cache-xml-file to be parsed
-		CacheFactory factory = new CacheFactory().set("cache-xml-file", "gemfire-config.xml");
+		ClientCacheFactory factory = new ClientCacheFactory().set("name", "CqClient").set("cache-xml-file",
+				"gemfire-config.xml");
 		for (Entry<Object, Object> e : producerProps.entrySet()) {
 			factory.set(e.getKey().toString(), e.getValue().toString());
 		}
@@ -111,7 +112,7 @@ public class GemfireSink extends AbstractSink implements Configurable {
 		// instantiating the producer.
 		// For example, gemfire.metadata.broker.list = localhost:9092 is a
 		// property that is processed here, but not
-		// sinks.k1.type = com.thilinamb.flume.sink.GemfireSink.
+		// sinks.k1.type = com.smarthub.flume.sink.GemfireSink.
 		Map<String, String> params = context.getParameters();
 		producerProps = new Properties();
 		for (String key : params.keySet()) {

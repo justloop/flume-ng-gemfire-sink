@@ -62,7 +62,8 @@ Following parameters are supported at the moment.
 - **preprocessor**[optional]
 	- This is an extension point provided support dynamic regions and keys. Also it's possible to use it to support message modification before publishing to Gemfire. The full qualified class name of the preprocessor implementation should be provided here. Refer the next subsection to read more about preprocessors. If a preprocessor is not configured, then a static region should be used as explained before. And the messages will not be keyed. In a primitive setup, configuring a static region would suffice.
 
--- ****
+-- **wrapper**
+	- the wrapper object class for message
 	
 - **Gemfire Properties**
 	- These properties are used to configure the Gemfire. Any producer property supported by Gemfire can be used. The only requirement is to prepend the property name with the prefix `Gemfire.`. For instance, the `mcast-port` property should be written as `gemfire.mcast-port`. Please take a look at the [sample configuration](https://github.com/yuenengfanhua/flume-ng-gemfire-sink/blob/master/impl/src/test/resources/gemfire.properties) provided in the `conf` directory of the distribution.

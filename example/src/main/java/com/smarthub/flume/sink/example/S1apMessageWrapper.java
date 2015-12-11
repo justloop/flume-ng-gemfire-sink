@@ -3,7 +3,6 @@ package com.smarthub.flume.sink.example;
 import com.smarthub.flume.sink.MessageWrapper;
 
 public class S1apMessageWrapper implements MessageWrapper {
-	S1apMessageWrapper msgObj = new S1apMessageWrapper();
 
 	private String timestamp;
 	private String misisdn;
@@ -14,7 +13,7 @@ public class S1apMessageWrapper implements MessageWrapper {
 	@Override
 	public MessageWrapper wrap(String msg) {
 
-		return msgObj;
+		return this;
 	}
 
 	public String getTimestamp() {
