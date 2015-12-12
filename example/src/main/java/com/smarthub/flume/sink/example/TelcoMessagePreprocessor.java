@@ -25,13 +25,18 @@ import org.apache.flume.Context;
 import org.apache.flume.Event;
 
 import com.smarthub.flume.sink.MessagePreprocessor;
+import com.smarthub.flume.sink.MessageTransformationException;
 import com.smarthub.flume.sink.MessageWrapper;
 
 /**
  * This is an example of a <code>MessagePreprocessor</code> implementation.
  */
-public class SimpleMessagePreprocessor implements MessagePreprocessor {
-	S1apMessageWrapper obj = new S1apMessageWrapper();
+public class TelcoMessagePreprocessor implements MessagePreprocessor {
+	AifMessageWrapper aifObj = new AifMessageWrapper();
+	GbMessageWrapper gbObj = new GbMessageWrapper();
+	S1apMessageWrapper iucsObj = new S1apMessageWrapper();
+	S1apMessageWrapper iupsObj = new S1apMessageWrapper();
+	S1apMessageWrapper s1apObj = new S1apMessageWrapper();
 
 	/**
 	 * extract the hour of the time stamp as the key. So the data is partitioned
@@ -44,7 +49,7 @@ public class SimpleMessagePreprocessor implements MessagePreprocessor {
 	 * @return Hour of the timestamp
 	 */
 	@Override
-	public String extractKey(Event event, Context context) {
+	public String extractKey(Event event, Context context) throws MessageTransformationException {
 		// get timestamp header if it's present.
 		String timestampStr = event.getHeaders().get("timestamp");
 		if (timestampStr != null) {
@@ -69,9 +74,31 @@ public class SimpleMessagePreprocessor implements MessagePreprocessor {
 	 *         body
 	 */
 	@Override
-	public MessageWrapper transformMessage(Event event, Context context) {
-		obj.wrap(new String(event.getBody()));
-		obj.setTimestamp(event.getHeaders().get("timestamp"));
-		return obj;
+	public MessageWrapper transformMessage(Event event, Context context) throws MessageTransformationException {
+		EventType eventType = EventType.valueOf(event.getHeaders().get("type"));
+		switch (eventType) {
+		case AIF: {
+			aifObj.wrap(new String(event.getBody()));
+			return aifObj;
+		}
+		case GB: {
+			gbObj.wrap(new String(event.getBody()));
+			return gbObj;
+		}
+		case IuCS: {
+			iucsObj.wrap(new String(event.getBody()));
+			return iucsObj;
+		}
+		case IuPS: {
+			iupsObj.wrap(new String(event.getBody()));
+			return iupsObj;
+		}
+		case S1AP: {
+			s1apObj.wrap(new String(event.getBody()));
+			return s1apObj;
+		}
+		default:
+			throw new MessageTransformationException("Unable to transform message: " + event.getBody());
+		}
 	}
 }

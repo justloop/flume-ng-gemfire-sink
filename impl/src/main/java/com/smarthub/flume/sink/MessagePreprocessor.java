@@ -60,8 +60,9 @@ public interface MessagePreprocessor {
 	 * @param context
 	 *            The Flume runtime context.
 	 * @return Key extracted based on the implemented logic
+	 * @throws MessageTransformationException
 	 */
-	public String extractKey(Event event, Context context);
+	public String extractKey(Event event, Context context) throws MessageTransformationException;
 
 	/**
 	 * Prepare message for publishing. This allows users to modify the message
@@ -72,6 +73,7 @@ public interface MessagePreprocessor {
 	 * @param context
 	 *            Flume context
 	 * @return message that will be published into Gemfire
+	 * @throws MessageTransformationException
 	 */
-	public MessageWrapper transformMessage(Event event, Context context);
+	public MessageWrapper transformMessage(Event event, Context context) throws MessageTransformationException;
 }
