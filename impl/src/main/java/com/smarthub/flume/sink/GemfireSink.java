@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.client.ClientCache;
 import com.gemstone.gemfire.cache.client.ClientCacheFactory;
+import com.google.gson.Gson;
 
 public class GemfireSink extends AbstractSink implements Configurable {
 
@@ -48,7 +49,7 @@ public class GemfireSink extends AbstractSink implements Configurable {
 
 				// log the event for debugging
 				if (logger.isDebugEnabled()) {
-					logger.debug("{Event} " + eventBody);
+					logger.debug("{Event} header: " + new Gson().toJson(event.getHeaders()) + " body: " + eventBody);
 				}
 
 				// if the metadata extractor is set, extract the topic and the
@@ -70,7 +71,8 @@ public class GemfireSink extends AbstractSink implements Configurable {
 
 		} catch (Exception ex) {
 			transaction.rollback();
-			String errorMsg = "Failed to publish event: " + event;
+			String errorMsg = "Failed to publish event: {Event} header: " + new Gson().toJson(event.getHeaders())
+					+ " body: " + new String(event.getBody());
 			logger.error(errorMsg);
 			throw new EventDeliveryException(errorMsg, ex);
 
@@ -85,10 +87,10 @@ public class GemfireSink extends AbstractSink implements Configurable {
 	public synchronized void start() {
 		// load from gemfire config
 		// Create the cache which causes the cache-xml-file to be parsed
-		ClientCacheFactory factory = new ClientCacheFactory().set("name", "CqClient").set("cache-xml-file",
+		ClientCacheFactory factory = new ClientCacheFactory().set("name", "client").set("cache-xml-file",
 				"gemfire-config.xml");
 		for (Entry<Object, Object> e : producerProps.entrySet()) {
-			factory.set(e.getKey().toString(), e.getValue().toString());
+			factory = factory.set(e.getKey().toString(), e.getValue().toString());
 		}
 		cache = factory.create();
 
@@ -143,6 +145,7 @@ public class GemfireSink extends AbstractSink implements Configurable {
 					logger.error(errorMsg);
 					throw new IllegalArgumentException(errorMsg);
 				}
+				logger.info("Preprocessor class name: " + preprocessorClassName);
 			} catch (ClassNotFoundException e) {
 				String errorMsg = "Error instantiating the MessagePreprocessor implementation.";
 				logger.error(errorMsg, e);
@@ -173,6 +176,7 @@ public class GemfireSink extends AbstractSink implements Configurable {
 					logger.error(errorMsg);
 					throw new IllegalArgumentException(errorMsg);
 				}
+				logger.info("Wrapper class name: " + messageWrapperClassName);
 			} catch (ClassNotFoundException e) {
 				String errorMsg = "Error instantiating the MessageWrapper implementation.";
 				logger.error(errorMsg, e);
@@ -187,17 +191,12 @@ public class GemfireSink extends AbstractSink implements Configurable {
 				throw new IllegalArgumentException(errorMsg, e);
 			}
 		}
-
-		if (messagePreProcessor == null) {
-			// MessagePreprocessor is not set. So read the topic from the
-			// config.
-			region = context.getString(Constants.REGION, Constants.DEFAULT_REGION);
-			if (region.equals(Constants.DEFAULT_REGION)) {
-				logger.warn("The Properties 'metadata.extractor' or 'region' is not set. Using the default region name"
-						+ Constants.DEFAULT_REGION);
-			} else {
-				logger.info("Using the static region: " + region);
-			}
+		region = context.getString(Constants.REGION, Constants.DEFAULT_REGION);
+		if (region.equals(Constants.DEFAULT_REGION)) {
+			logger.warn("The Properties 'metadata.extractor' or 'region' is not set. Using the default region name"
+					+ Constants.DEFAULT_REGION);
+		} else {
+			logger.info("Using the static region: " + region);
 		}
 	}
 }
