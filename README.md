@@ -50,6 +50,9 @@ More details can be found in the [Flume user guide](https://flume.apache.org/Flu
 _Quick and Dirty Approach_
 - Copy the jar files inside the `lib` directory of extracted archive into `${FLUME_HOME}/lib`.
 
+**Deploy on Gemfire**
+_deploy your jar into gemfire (like flume-gemfire-sink-example-x.x.x.jar), otherwise gemfire will complain about MessageWrapper class not found_
+
 ## Configuration
 Following parameters are supported at the moment.
 

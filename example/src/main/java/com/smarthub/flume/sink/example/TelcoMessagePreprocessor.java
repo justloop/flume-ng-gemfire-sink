@@ -47,7 +47,7 @@ public class TelcoMessagePreprocessor implements MessagePreprocessor {
 	 */
 	@Override
 	public String extractKey(Event event, Context context) throws MessageTransformationException {
-		return event.getHeaders().get("timestamp");
+		return event.getHeaders().get("id");
 	}
 
 	/**
