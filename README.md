@@ -51,6 +51,7 @@ _Quick and Dirty Approach_
 - Copy the jar files inside the `lib` directory of extracted archive into `${FLUME_HOME}/lib`.
 
 **Deploy on Gemfire**
+
 _deploy your jar into gemfire (like flume-gemfire-sink-example-x.x.x.jar), otherwise gemfire will complain about MessageWrapper class not found_
 
 ## Configuration
@@ -65,7 +66,7 @@ Following parameters are supported at the moment.
 - **preprocessor**[optional]
 	- This is an extension point provided support dynamic regions and keys. Also it's possible to use it to support message modification before publishing to Gemfire. The full qualified class name of the preprocessor implementation should be provided here. Refer the next subsection to read more about preprocessors. If a preprocessor is not configured, then a static region should be used as explained before. And the messages will not be keyed. In a primitive setup, configuring a static region would suffice.
 
--- **wrapper**
+- **wrapper**
 	- the wrapper object class for message
 	
 - **Gemfire Properties**
