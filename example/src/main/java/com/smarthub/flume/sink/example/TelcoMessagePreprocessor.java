@@ -18,9 +18,6 @@
 
 package com.smarthub.flume.sink.example;
 
-import java.util.Calendar;
-import java.util.TimeZone;
-
 import org.apache.flume.Context;
 import org.apache.flume.Event;
 
@@ -50,17 +47,7 @@ public class TelcoMessagePreprocessor implements MessagePreprocessor {
 	 */
 	@Override
 	public String extractKey(Event event, Context context) throws MessageTransformationException {
-		// get timestamp header if it's present.
-		String timestampStr = event.getHeaders().get("timestamp");
-		if (timestampStr != null) {
-			// parse it and get the hour
-			Long timestamp = Long.parseLong(timestampStr);
-			Calendar cal = Calendar.getInstance();
-			cal.setTimeZone(TimeZone.getTimeZone("UTC"));
-			cal.setTimeInMillis(timestamp);
-			return Integer.toString(cal.get(Calendar.HOUR_OF_DAY));
-		}
-		return null; // return null otherwise
+		return event.getHeaders().get("timestamp");
 	}
 
 	/**
