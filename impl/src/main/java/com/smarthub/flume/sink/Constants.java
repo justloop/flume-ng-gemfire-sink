@@ -28,4 +28,10 @@ public class Constants {
 	public static final String REGION = "region";
 
 	public static final String MESSAGE_WRAPPER = "wrapper";
+
+	public static final String BATCH_SIZE = "batch_size";
+	public static final int DEFAULT_BATCH_SIZE = 100;
+
+	public static final String INSERT_THREADS = "insert_threads";
+	public static final int DEFAULT_INSERT_THREADS = 10;
 }

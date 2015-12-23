@@ -1,8 +1,14 @@
 package com.smarthub.flume.sink;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Queue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.flume.Channel;
 import org.apache.flume.Context;
@@ -26,10 +32,13 @@ public class GemfireSink extends AbstractSink implements Configurable {
 	private MessageWrapper messageWrapper;
 	private MessagePreprocessor messagePreProcessor;
 	private String region;
+	private int batch_size;
 	private Context context;
-
 	private ClientCache cache;
 	private Region<String, MessageWrapper> gfRegion;
+	private int insertThreads;
+	private Queue queue = new ConcurrentLinkedQueue();
+	private ExecutorService executorService;
 
 	@Override
 	public Status process() throws EventDeliveryException {
@@ -38,34 +47,42 @@ public class GemfireSink extends AbstractSink implements Configurable {
 		Transaction transaction = channel.getTransaction();
 		Event event = null;
 		String eventKey = null;
-
+		Map<String, MessageWrapper> eventMap = new HashMap<String, MessageWrapper>();
 		try {
 			transaction.begin();
-			event = channel.take();
 
-			if (event != null) {
-				// get the message body.
-				String eventBody = new String(event.getBody());
+			for (int i = 0; i < batch_size; i++) {
 
-				// log the event for debugging
-				if (logger.isDebugEnabled()) {
-					logger.debug("{Event} header: " + new Gson().toJson(event.getHeaders()) + " body: " + eventBody);
+				event = channel.take();
+
+				if (event != null) {
+					// get the message body.
+					String eventBody = new String(event.getBody());
+
+					// log the event for debugging
+					if (logger.isDebugEnabled()) {
+						logger.debug(
+								"{Event} header: " + new Gson().toJson(event.getHeaders()) + " body: " + eventBody);
+					}
+
+					// if the metadata extractor is set, extract the topic and
+					// the
+					// key.
+					messageWrapper = null;
+					if (messagePreProcessor != null) {
+						messageWrapper = messagePreProcessor.transformMessage(event, context);
+						eventKey = messagePreProcessor.extractKey(event, context);
+					}
+					eventMap.put(eventKey, messageWrapper);
+
+				} else {
+					// No event found, request back-off semantics from the sink
+					// runner
+					result = Status.BACKOFF;
 				}
-
-				// if the metadata extractor is set, extract the topic and the
-				// key.
-				messageWrapper = null;
-				if (messagePreProcessor != null) {
-					messageWrapper = messagePreProcessor.transformMessage(event, context);
-					eventKey = messagePreProcessor.extractKey(event, context);
-				}
-				gfRegion.put(eventKey, messageWrapper);
-
-			} else {
-				// No event found, request back-off semantics from the sink
-				// runner
-				result = Status.BACKOFF;
 			}
+
+			queue.add(eventMap);
 			// publishing is successful. Commit.
 			transaction.commit();
 
@@ -97,6 +114,12 @@ public class GemfireSink extends AbstractSink implements Configurable {
 		// Get the Region
 		gfRegion = cache.getRegion(region);
 		super.start();
+
+		logger.info("init thread pool executor...");
+		executorService = Executors.newFixedThreadPool(insertThreads);
+		for (int i = 0; i < insertThreads; i++) {
+			executorService.submit(new GemFireWriterThread(gfRegion, queue));
+		}
 	}
 
 	@Override
@@ -193,10 +216,62 @@ public class GemfireSink extends AbstractSink implements Configurable {
 		}
 		region = context.getString(Constants.REGION, Constants.DEFAULT_REGION);
 		if (region.equals(Constants.DEFAULT_REGION)) {
-			logger.warn("The Properties 'metadata.extractor' or 'region' is not set. Using the default region name"
-					+ Constants.DEFAULT_REGION);
+			logger.warn("The Properties 'region' is not set. Using the default region name" + Constants.DEFAULT_REGION);
 		} else {
 			logger.info("Using the static region: " + region);
+		}
+
+		batch_size = context.getInteger(Constants.BATCH_SIZE, Constants.DEFAULT_BATCH_SIZE);
+		if (batch_size == Constants.DEFAULT_BATCH_SIZE) {
+			logger.warn("The Properties 'batch_size' is not set. Using the default batch size"
+					+ Constants.DEFAULT_BATCH_SIZE);
+		} else {
+			logger.info("Using batch size: " + batch_size);
+		}
+
+		insertThreads = context.getInteger(Constants.INSERT_THREADS, Constants.DEFAULT_INSERT_THREADS);
+		if (insertThreads == Constants.DEFAULT_INSERT_THREADS) {
+			logger.warn("The Properties 'insert_threads' is not set. Using the default insert threads size"
+					+ Constants.DEFAULT_INSERT_THREADS);
+		} else {
+			logger.info("Using insert threads: " + insertThreads);
+		}
+	}
+
+	private class GemFireWriterThread implements Callable {
+		Logger logger = LoggerFactory.getLogger(GemFireWriterThread.class);
+
+		private Region region;
+		private Queue queue;
+
+		public GemFireWriterThread(Region<String, MessageWrapper> region, Queue queue) {
+			this.region = region;
+			this.queue = queue;
+		}
+
+		@Override
+		public Object call() throws Exception {
+			Object poll = null;
+			int retryCounter = 0;
+			while (retryCounter < Integer.MAX_VALUE) {
+				poll = queue.poll();
+				if (poll != null) {
+					processData((Map) poll);
+					retryCounter = 0;
+				} else {
+					Thread.currentThread().sleep(1000);
+					retryCounter++;
+				}
+			}
+			return 1;
+		}
+
+		private void processData(Map poll) {
+			Map data = poll;
+			region.putAll(data);
+			if (logger.isDebugEnabled()) {
+				logger.debug(Thread.currentThread().getId() + " --- Completed data put");
+			}
 		}
 	}
 }
